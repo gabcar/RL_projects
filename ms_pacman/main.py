@@ -99,7 +99,7 @@ def main():
             if np.mean(avg_steps_2) < 200:
                 env.render()
 
-            action = select_action(obs, policy_net, action_dim).numpy()
+            action = select_action(obs, policy_net, action_dim).cpu().numpy()
 
             obs_, re_, done, _ = env.step(action)
             obs_ = np.transpose(np.expand_dims(obs_, axis=0), (0, 3, 1, 2))
