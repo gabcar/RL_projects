@@ -127,16 +127,15 @@ def main():
     n_episodes = 30000
     mov_avg = []
     for i_episode in range(n_episodes):
-        obs = np.transpose(np.expand_dims(env.reset(), axis=0), (0, 3, 1, 2))
+        obs = (np.transpose(np.expand_dims(env.reset(), axis=0), (0, 3, 1, 2)) / 124) - 1
         reward = 0
         i = 0
         while True:
             img = np.transpose(obs, (0, 2, 3, 1))
 
             action = select_action(obs, policy_net, action_dim).cpu().numpy()
-
             obs_, re_, done, _ = env.step(action)
-            obs_ = np.transpose(np.expand_dims(obs_, axis=0), (0, 3, 1, 2))
+            obs_ = (np.transpose(np.expand_dims(obs_, axis=0), (0, 3, 1, 2)) / 124) - 1
             reward += re_
 
             # replay_mem.push(torch.tensor(obs, dtype=torch.float32, device=device), 
