@@ -13,7 +13,7 @@ import numpy as np
 from network import DQN
 
 
-BATCH_SIZE = 128
+BATCH_SIZE = 8
 GAMMA = 0.999
 EPS_START = 1.0
 EPS_END = 0.01
@@ -89,15 +89,12 @@ def main():
     # graph of the network (DQN.parameters())
     optimizer = optim.Adam(policy_net.parameters(), lr=1e-3)
     n_episodes = 30000
-    avg_steps_2 = []
     for i_episode in range(n_episodes):
         obs = np.transpose(np.expand_dims(env.reset(), axis=0), (0, 3, 1, 2))
-        steps = 0
         reward = 0
         i = 0
         while True:
-            if np.mean(avg_steps_2) < 200:
-                env.render()
+            env.render()
 
             action = select_action(obs, policy_net, action_dim).cpu().numpy()
 
@@ -134,10 +131,7 @@ def main():
                 optimizer.step()
             i += 1
             obs = obs_
-            steps += 1
             if done:
-                avg_steps_2.append(steps)
-                avg_steps_2 = avg_steps_2[-50:]
                 print("{} reward: {}".format(i_episode, reward))
                 break
         # Update the target network
