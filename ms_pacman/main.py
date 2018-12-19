@@ -92,10 +92,10 @@ def main():
     avg_steps_2 = []
     for i_episode in range(n_episodes):
         obs = np.transpose(np.expand_dims(env.reset(), axis=0), (0, 3, 1, 2))
-        print(obs.shape)
         steps = 0
         reward = 0
-        for i in range(200):
+        i = 0
+        while True:
             if np.mean(avg_steps_2) < 200:
                 env.render()
 
@@ -132,7 +132,7 @@ def main():
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-
+            i += 1
             obs = obs_
             steps += 1
             if done:
