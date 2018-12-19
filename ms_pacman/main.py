@@ -116,17 +116,13 @@ def main():
     # graph of the network (DQN.parameters())
     optimizer = optim.Adam(policy_net.parameters(), lr=1e-3)
     n_episodes = 30000
+    mov_avg = [0]
     for i_episode in range(n_episodes):
         obs = np.transpose(np.expand_dims(env.reset(), axis=0), (0, 3, 1, 2))
         reward = 0
         i = 0
         while True:
             img = np.transpose(obs, (0, 2, 3, 1))
-
-            if i_episode > 500:
-                plt.clf()
-                plt.imshow(img[0, :, :, :])
-                plt.pause(0.0001)
 
             action = select_action(obs, policy_net, action_dim).cpu().numpy()
 
@@ -142,6 +138,9 @@ def main():
             i += 1
             obs = obs_
             if done:
+                mov_avg.append(0.1 * reward + 0.9 * mov_avg[-1])
+                plt.plot(mov_avg)
+                plt.pause(0.00001)
                 print("{} reward: {}".format(i_episode, reward))
                 break
         # Update the target network
