@@ -124,6 +124,7 @@ def main():
             img = np.transpose(obs, (0, 2, 3, 1))
             plt.clf()
             plt.imshow(img[0, :, :, :])
+            plt.tight_layout()
             plt.pause(0.0001)
 
             action = select_action(obs, policy_net, action_dim).cpu().numpy()
