@@ -116,7 +116,7 @@ def main():
     # graph of the network (DQN.parameters())
     optimizer = optim.Adam(policy_net.parameters(), lr=1e-3)
     n_episodes = 30000
-    mov_avg = [0]
+    mov_avg = []
     for i_episode in range(n_episodes):
         obs = np.transpose(np.expand_dims(env.reset(), axis=0), (0, 3, 1, 2))
         reward = 0
@@ -138,7 +138,9 @@ def main():
             i += 1
             obs = obs_
             if done:
-                mov_avg.append(0.1 * reward + 0.9 * mov_avg[-1])
+                if mov_avg:
+                    mov_avg.append(0.1 * reward + 0.9 * mov_avg[-1])
+                else: mov_avg.append(reward)
                 plt.plot(mov_avg)
                 plt.pause(0.00001)
                 print("{} reward: {}".format(i_episode, reward))
