@@ -6,18 +6,18 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-
 import gym
 import numpy as np
+from matplotlib import pyplot as plt
 
-from network import DQN
+from network import AlexNet
 
-
+N_UPDATES = 10
 BATCH_SIZE = 8
 GAMMA = 0.999
 EPS_START = 1.0
 EPS_END = 0.01
-EPS_DECAY = 200
+EPS_DECAY = 20000
 TARGET_UPDATE = 10
 
 steps_done = 0
@@ -60,6 +60,31 @@ def select_action(state, policy_net, action_dim):
     else:
         return torch.tensor(random.randrange(action_dim), device=device, dtype=torch.long)
 
+def learn(replay_mem, optimizer, policy_net, target_net):
+    if len(replay_mem) < BATCH_SIZE:
+        return
+    transitions = replay_mem.sample(BATCH_SIZE)
+    state_batch, action_batch, reward_batch, next_state_batch = zip(*transitions)
+
+    # to get the output of the network we simply pass the batch 
+    # through the net with a function call
+    state_batch = torch.cat(state_batch)
+    action_batch =  torch.cat(action_batch).view(-1, 1)
+    reward_batch =  torch.cat(reward_batch).view(-1, 1)
+    next_state_batch =  torch.cat(next_state_batch)
+    
+    current_q_values = policy_net(state_batch).gather(1, action_batch)
+    with torch.no_grad():
+        max_next_q_values = target_net(next_state_batch).max(1)[0]
+    expected_q_values = reward_batch + (GAMMA * max_next_q_values)
+
+    loss = F.smooth_l1_loss(current_q_values, expected_q_values)
+
+    # Optimize the model
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
 def main():
     # init the environment
     # gym.envs.register(
@@ -68,6 +93,8 @@ def main():
     # tags={'wrapper_config.TimeLimit.max_episode_steps': 5000},
     # reward_threshold=475.0,
     # )
+    plt.figure()
+    plt.ion()
     env = gym.make('MsPacman-v0')
 
     # env = gym.make('CartPole-v0')
@@ -78,9 +105,9 @@ def main():
     action_dim = env.action_space.n
     torch_shape = (BATCH_SIZE, state_dim[2], state_dim[0], state_dim[1])
 
-    buffer = ReplayMemory(1000)
-    policy_net = DQN(action_dim).to(device)
-    target_net = DQN(action_dim).to(device)
+    replay_mem = ReplayMemory(1000)
+    policy_net = AlexNet(action_dim).to(device)
+    target_net = AlexNet(action_dim).to(device)
 
     target_net.load_state_dict(policy_net.state_dict())
 
@@ -94,7 +121,10 @@ def main():
         reward = 0
         i = 0
         while True:
-            env.render()
+            img = np.transpose(obs, (0, 2, 3, 1))
+            plt.clf()
+            plt.imshow(img[0, :, :, :])
+            plt.pause(0.0001)
 
             action = select_action(obs, policy_net, action_dim).cpu().numpy()
 
@@ -102,33 +132,11 @@ def main():
             obs_ = np.transpose(np.expand_dims(obs_, axis=0), (0, 3, 1, 2))
             reward += re_ - 1
 
-            buffer.push(torch.tensor(obs, dtype=torch.float32, device=device), 
+            replay_mem.push(torch.tensor(obs, dtype=torch.float32, device=device), 
                         torch.tensor((int(action),), dtype=torch.long, device=device),
                         torch.tensor((reward,), dtype=torch.float32, device=device),
                         torch.tensor(obs_, dtype=torch.float32, device=device))
 
-            if len(buffer) >= BATCH_SIZE:
-                transitions = buffer.sample(BATCH_SIZE)
-                state_batch, action_batch, reward_batch, next_state_batch = zip(*transitions)
-
-                # to get the output of the network we simply pass the batch 
-                # through the net with a function call
-                state_batch = torch.cat(state_batch)
-                action_batch =  torch.cat(action_batch).view(-1, 1)
-                reward_batch =  torch.cat(reward_batch).view(-1, 1)
-                next_state_batch =  torch.cat(next_state_batch)
-                
-                current_q_values = policy_net(state_batch).gather(1, action_batch)
-                with torch.no_grad():
-                    max_next_q_values = target_net(next_state_batch).max(1)[0]
-                expected_q_values = reward_batch + (GAMMA * max_next_q_values)
-
-                loss = F.smooth_l1_loss(current_q_values, expected_q_values)
-
-                # Optimize the model
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
             i += 1
             obs = obs_
             if done:
@@ -137,6 +145,8 @@ def main():
         # Update the target network
         if i_episode % TARGET_UPDATE == 0:
             target_net.load_state_dict(policy_net.state_dict())
+        for _ in range(N_UPDATES):
+            learn(replay_mem, optimizer, policy_net, target_net)
 
 
 if __name__ == '__main__':
