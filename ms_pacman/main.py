@@ -78,7 +78,7 @@ def main():
     action_dim = env.action_space.n
     torch_shape = (BATCH_SIZE, state_dim[2], state_dim[0], state_dim[1])
 
-    buffer = ReplayMemory(10000)
+    buffer = ReplayMemory(1000)
     policy_net = DQN(action_dim).to(device)
     target_net = DQN(action_dim).to(device)
 
@@ -100,7 +100,7 @@ def main():
 
             obs_, re_, done, _ = env.step(action)
             obs_ = np.transpose(np.expand_dims(obs_, axis=0), (0, 3, 1, 2))
-            reward += re_
+            reward += re_ - 1
 
             buffer.push(torch.tensor(obs, dtype=torch.float32, device=device), 
                         torch.tensor((int(action),), dtype=torch.long, device=device),
