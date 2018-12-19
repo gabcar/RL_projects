@@ -68,10 +68,19 @@ def learn(replay_mem, optimizer, policy_net, target_net):
 
     # to get the output of the network we simply pass the batch 
     # through the net with a function call
-    state_batch = torch.cat(state_batch)
-    action_batch =  torch.cat(action_batch).view(-1, 1)
-    reward_batch =  torch.cat(reward_batch).view(-1, 1)
-    next_state_batch =  torch.cat(next_state_batch)
+    state_batch = torch.cat([torch.tensor(obs, dtype=torch.float32, device=device)
+                             for obs in state_batch])
+    action_batch =  torch.cat([torch.tensor((int(action),), dtype=torch.long, device=device)
+                             for action in action_batch]).view(-1, 1)
+    reward_batch =  torch.cat([torch.tensor((reward,), dtype=torch.float32, device=device)
+                             for reward in reward_batch]).view(-1, 1)
+    next_state_batch = torch.cat([torch.tensor(obs, dtype=torch.float32, device=device)
+                             for obs in next_state_batch])
+
+    # replay_mem.push(torch.tensor(obs, dtype=torch.float32, device=device), 
+    #             torch.tensor((int(action),), dtype=torch.long, device=device),
+    #             torch.tensor((reward,), dtype=torch.float32, device=device),
+    #             torch.tensor(obs_, dtype=torch.float32, device=device))
     
     current_q_values = policy_net(state_batch).gather(1, action_batch)
     with torch.no_grad():
@@ -128,19 +137,24 @@ def main():
 
             obs_, re_, done, _ = env.step(action)
             obs_ = np.transpose(np.expand_dims(obs_, axis=0), (0, 3, 1, 2))
-            reward += re_ - 1
+            reward += re_
 
-            replay_mem.push(torch.tensor(obs, dtype=torch.float32, device=device), 
-                        torch.tensor((int(action),), dtype=torch.long, device=device),
-                        torch.tensor((reward,), dtype=torch.float32, device=device),
-                        torch.tensor(obs_, dtype=torch.float32, device=device))
+            # replay_mem.push(torch.tensor(obs, dtype=torch.float32, device=device), 
+            #             torch.tensor((int(action),), dtype=torch.long, device=device),
+            #             torch.tensor((reward,), dtype=torch.float32, device=device),
+            #             torch.tensor(obs_, dtype=torch.float32, device=device))
+
+            replay_mem.push(obs, action, reward, obs_)
 
             i += 1
             obs = obs_
             if done:
                 if mov_avg:
                     mov_avg.append(0.1 * reward + 0.9 * mov_avg[-1])
-                else: mov_avg.append(reward)
+                else: 
+                    mov_avg.append(reward)
+
+                plt.clf()
                 plt.plot(mov_avg)
                 plt.pause(0.00001)
                 print("{} reward: {}".format(i_episode, reward))
